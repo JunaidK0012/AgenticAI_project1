@@ -1,92 +1,104 @@
-import streamlit as st
-from langchain_core.messages import HumanMessage, AIMessage
-from langgraph.types import Command
-
-import sys, os
+import streamlit as st 
+import os
+import uuid
+import sys
+from langchain_core.messages import HumanMessage
+# Add parent directory to sys.path so Python can see main.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from main import graph
 
-from graph_builder import build_graph
+# -------------------- utility function -----------------------------
 
-# Build agentic graph
-graph = build_graph()
+def generate_thread_id():
+    thread_id = uuid.uuid4()
+    return thread_id
 
-# --- Streamlit UI ---
-st.set_page_config(page_title="Agentic AI Assistant", layout="wide")
-st.title("🤖 Agentic AI Research Assistant")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "graph_config" not in st.session_state:
-    st.session_state.graph_config = {"configurable": {"thread_id": "web_ui"}}
-if "pending_interrupt" not in st.session_state:
-    st.session_state.pending_interrupt = None
+def reset_chat():
+    thread_id = generate_thread_id()
+    st.session_state['thread_id'] = thread_id
+    add_thread(st.session_state['thread_id'])
+    st.session_state['message_history'] = []
 
 
-# --- Chat input ---
-user_input = st.chat_input("Ask me anything (e.g., 'search AI papers on arxiv')")
-if user_input:
-    st.session_state.messages.append(HumanMessage(content=user_input))
-
-    # Run graph
-    result = graph.invoke({"messages": st.session_state.messages}, st.session_state.graph_config)
-
-    # If interrupt request is present, capture it
-    if isinstance(result, list) and result and "action_request" in result[0]:
-        st.session_state.pending_interrupt = result[0]
-    else:
-        st.session_state.messages.extend(result["messages"])
+def add_thread(thread_id):
+    if thread_id not in st.session_state['chat_threads']:
+        st.session_state['chat_threads'].append(thread_id)
 
 
-# --- Display chat messages ---
-for msg in st.session_state.messages:
-    if isinstance(msg, HumanMessage):
-        with st.chat_message("user"):
-            st.write(msg.content)
-    elif isinstance(msg, AIMessage):
-        with st.chat_message("assistant"):
-            st.write(msg.content)
+def load_conversation(thread_id):
+    return graph.get_state(config={'configurable': {'thread_id':thread_id}}).values['messages']
 
 
-# --- HITL interrupt UI ---
-if st.session_state.pending_interrupt:
-    interrupt = st.session_state.pending_interrupt
-    action = interrupt["action_request"]["action"]
-    args = interrupt["action_request"]["args"]
+ 
 
-    st.warning(f"⚠️ Tool call pending review: **{action}({args})**")
+# -------------------- Session State ---------------------------
 
-    col1, col2, col3 = st.columns(3)
+if 'message_history' not in st.session_state:
+    st.session_state['message_history'] = []
 
-    with col1:
-        if st.button("✅ Accept"):
-            for chunk in graph.stream(
-                Command(resume=[{"type": "accept"}]),
-                st.session_state.graph_config,
-            ):
-                st.session_state.messages.extend(chunk.get("messages", []))
-            st.session_state.pending_interrupt = None
-            st.experimental_rerun()
+if 'thread_id' not in st.session_state:
+    st.session_state['thread_id'] = generate_thread_id()
 
-    with col2:
-        if st.button("✏️ Edit Args"):
-            new_args = st.text_area("Edit tool args (JSON)", value=str(args))
-            if st.button("Submit Edited Args"):
-                for chunk in graph.stream(
-                    Command(resume=[{"type": "edit", "args": {"args": eval(new_args)}}]),
-                    st.session_state.graph_config,
-                ):
-                    st.session_state.messages.extend(chunk.get("messages", []))
-                st.session_state.pending_interrupt = None
-                st.experimental_rerun()
+if 'chat_threads' not in st.session_state:
+    st.session_state['chat_threads'] = []
 
-    with col3:
-        if st.button("💬 Respond Instead"):
-            feedback = st.text_area("Write your feedback")
-            if st.button("Submit Feedback"):
-                for chunk in graph.stream(
-                    Command(resume=[{"type": "response", "args": feedback}]),
-                    st.session_state.graph_config,
-                ):
-                    st.session_state.messages.extend(chunk.get("messages", []))
-                st.session_state.pending_interrupt = None
-                st.experimental_rerun()
+
+
+add_thread(st.session_state['thread_id'])
+
+#--------------------- Sidebar UI ---------------------------------- 
+
+st.sidebar.title('Langgraph Chatbot')
+
+if st.sidebar.button('New Chat'):
+    reset_chat()
+
+st.sidebar.header("My Conversation")
+
+
+for thread_id in st.session_state['chat_threads']:
+    if st.sidebar.button(str(thread_id)):
+        st.session_state['thread_id'] = thread_id
+        messages = load_conversation(thread_id)
+
+        temp_message = []
+
+        for message in messages:
+            if isinstance(message,HumanMessage):
+                role = 'user'
+            else:
+                role = 'assistant'
+            temp_message.append({'role':role,'content':message.content})
+
+        st.session_state['message_history'] = temp_message
+            
+
+
+
+
+
+
+#------------------------------------------------------------------------
+#loading the conversation history
+for message in st.session_state['message_history']:
+    with st.chat_message(message['role']):
+        st.text(message['content'])
+
+
+
+user_input = st.chat_input("Type Here")
+
+if user_input: 
+    st.session_state['message_history'].append({'role':'user','content':user_input})
+    with st.chat_message('user'):
+        st.text(user_input)
+
+    CONFIG = {'configurable': {'thread_id':st.session_state['thread_id']}}
+    with st.chat_message('assistant'):
+        ai_message = st.write_stream(
+            message_chunk.content for message_chunk,metadata in graph.stream({'messages': [HumanMessage(content = user_input)]},config=CONFIG,stream_mode='messages'))
+
+
+
+    
+    st.session_state['message_history'].append({'role':'assistant','content':ai_message})

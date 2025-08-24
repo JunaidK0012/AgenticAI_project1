@@ -7,3 +7,4 @@ langchain_tavily
 langchain_community
 arxiv
 wikipedia
+youtube_search
