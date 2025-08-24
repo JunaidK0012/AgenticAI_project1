@@ -207,3 +207,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 files/
+
+chatbot.db
+chatbot.db-shm
+chatbot.db-wal

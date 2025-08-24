@@ -8,3 +8,4 @@ langchain_community
 arxiv
 wikipedia
 youtube_search
+langgraph-checkpoint-sqlite
