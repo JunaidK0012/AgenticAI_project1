@@ -6,29 +6,36 @@ from langchain_core.messages import HumanMessage,AIMessage,ToolMessage
 # Add parent directory to sys.path so Python can see main.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from main import graph,generate_conversation_title
-from graph_builder import retrieve_all_threads
+from graph_builder import retrieve_all_threads,save_thread_title
 
 # -------------------- utility function -----------------------------
 
 def generate_thread_id():
     thread_id = uuid.uuid4()
-    return thread_id
+    return str(thread_id)
 
 def reset_chat():
     thread_id = generate_thread_id()
     st.session_state['thread_id'] = thread_id
-    add_thread(st.session_state['thread_id'],"New Chat")
+    add_thread(thread_id,topic="New Conversation")
+    save_thread_title(thread_id,"New Conversation")
     st.session_state['message_history'] = []
 
 
-def add_thread(thread_id,topic="New Chat"):
-    if not any(thread['thread_id'] == thread_id for thread in st.session_state['chat_threads']):
-        st.session_state['chat_threads'].append({"thread_id":thread_id,"topic":topic})
-
+def add_thread(thread_id,topic=None):
+    if not any(t['thread_id'] == thread_id for t in st.session_state["chat_threads"]):
+        st.session_state["chat_threads"].append({
+            "thread_id": thread_id,
+            "topic": topic or str(thread_id)
+            
+        })
 
 def load_conversation(thread_id):
-    return graph.get_state(config={'configurable': {'thread_id':thread_id}}).values['messages']
-
+    try:
+        state = graph.get_state(config={'configurable': {'thread_id': thread_id}})
+        return state.values.get('messages', [])
+    except Exception as e:
+        st.warning(f"Could not load conversation. Please try again.")
 
  
 
@@ -40,12 +47,12 @@ if 'message_history' not in st.session_state:
 if 'thread_id' not in st.session_state:
     st.session_state['thread_id'] = generate_thread_id()
 
-if 'chat_threads' not in st.session_state:
-    st.session_state['chat_threads'] = [{'thread_id': t , 'topic':'New Chat'} for t in retrieve_all_threads()]
+if "chat_threads" not in st.session_state:
+    st.session_state["chat_threads"] = retrieve_all_threads()
 
 
 
-add_thread(st.session_state['thread_id'])
+add_thread(st.session_state['thread_id'],topic="New Conversation")
 
 #--------------------- Sidebar UI ---------------------------------- 
 
@@ -58,17 +65,19 @@ st.sidebar.header("My Conversations")
 
 
 for thread in st.session_state['chat_threads']:
-    if st.sidebar.button(thread['topic'], key=thread["thread_id"]):
-        st.session_state['thread_id'] = thread['thread_id']
-        messages = load_conversation(thread['thread_id'])
+    if st.sidebar.button(thread["topic"]):
+        st.session_state['thread_id'] = thread["thread_id"]
+        messages = load_conversation(thread["thread_id"])
 
         temp_message = []
 
         for message in messages:
             if isinstance(message,HumanMessage):
                 role = 'user'
-            else:
+            elif isinstance(message,AIMessage):
                 role = 'assistant'
+            else:
+                continue
             temp_message.append({'role':role,'content':message.content})
 
         st.session_state['message_history'] = temp_message
@@ -83,7 +92,7 @@ for thread in st.session_state['chat_threads']:
 #loading the conversation history
 for message in st.session_state['message_history']:
     with st.chat_message(message['role']):
-        st.text(message['content'])
+        st.markdown(message['content'])
 
 
 
@@ -91,56 +100,47 @@ user_input = st.chat_input("Type Here")
 
 if user_input: 
 
-    if len(st.session_state['message_history']) == 0:
+    #if len(st.session_state['message_history']) == 0:
     # First user input → generate topic using LLM
+        #title = generate_conversation_title(user_input)
+    
+        #for thread in st.session_state["chat_threads"]:
+            #if thread["thread_id"] == st.session_state["thread_id"]:
+                #thread["topic"] = title
+
+    st.session_state['message_history'].append({'role':'user','content':user_input})
+    with st.chat_message('user'):
+        st.markdown(user_input)
+
+    # Generate a title if this is the first user input
+    if len(st.session_state["message_history"]) == 1:
         title = generate_conversation_title(user_input)
         for thread in st.session_state["chat_threads"]:
             if thread["thread_id"] == st.session_state["thread_id"]:
                 thread["topic"] = title
+    # Persist in DB
+    save_thread_title(st.session_state["thread_id"], title)
 
-    st.session_state['message_history'].append({'role':'user','content':user_input})
-    with st.chat_message('user'):
-        st.text(user_input)
-
+    
     CONFIG = {'configurable': {'thread_id':st.session_state['thread_id']}}
   # Assistant streaming block
     with st.chat_message("assistant"):
-        # Use a mutable holder so the generator can set/modify it
-        status_holder = {"box": None}
- 
+         
         def ai_only_stream():
             for message_chunk, metadata in graph.stream(
                 {"messages": [HumanMessage(content=user_input)]},
                 config=CONFIG,
                 stream_mode="messages",
             ):
-                # Lazily create & update the SAME status container when any tool runs
-                if isinstance(message_chunk, ToolMessage):
-                    tool_name = getattr(message_chunk, "name", "tool")
-                    if status_holder["box"] is None:
-                        status_holder["box"] = st.status(
-                            f"🔧 Using `{tool_name}` …", expanded=True
-                        )
-                    else:
-                        status_holder["box"].update(
-                            label=f"🔧 Using `{tool_name}` …",
-                            state="running",
-                            expanded=True,
-                        )
-
                 # Stream ONLY assistant tokens
                 if isinstance(message_chunk, AIMessage):
                     yield message_chunk.content
 
         ai_message = st.write_stream(ai_only_stream())
 
-        # Finalize only if a tool was actually used
-        if status_holder["box"] is not None:
-            status_holder["box"].update(
-                label="✅ Tool finished", state="complete", expanded=False
-            )
 
-    # Save assistant message
+
+    # Save assistant message 
     st.session_state["message_history"].append(
         {"role": "assistant", "content": ai_message}
     )

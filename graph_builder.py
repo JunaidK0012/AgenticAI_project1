@@ -11,14 +11,32 @@ import sqlite3
 conn = sqlite3.connect(database='chatbot.db',check_same_thread=False)
 checkpointer = SqliteSaver(conn=conn)
 
+with conn:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS threads(
+                 thread_id TEXT PRIMARY KEY,
+                 topic TEXT
+        )
+
+""")
+
 def retrieve_all_threads():
+    threads = []
+    cursor = conn.execute("SELECT thread_id, topic FROM threads")
+    rows = cursor.fetchall()
 
-    all_threads=set()
+    for row in rows:
+        threads.append({"thread_id": row[0], "topic": row[1] or "New Conversation"})
+    return threads
 
-    for checkpoint in checkpointer.list(None):
-        all_threads.add(checkpoint.config['configurable']['thread_id'])
+def save_thread_title(thread_id: str, title: str):
+    with conn:
+        conn.execute("""
+            INSERT INTO threads (thread_id, topic)
+            VALUES (?, ?)
+            ON CONFLICT(thread_id) DO UPDATE SET topic=excluded.topic
+        """, (thread_id, title))
 
-    return list(all_threads)
 
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
