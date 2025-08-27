@@ -20,13 +20,7 @@ def planner_node(state):
 
     planner = planner_prompt | llm_with_tools
     result = planner.invoke({'messages': state['messages']})
-    # log LLM "thoughts"
-    if hasattr(result, "content"):
-        logger.info(f"💭 Thought: {result.content}")
-        # If tool call present, log action
-    if hasattr(result, "tool_calls") and result.tool_calls:
-        for tc in result.tool_calls:
-            logger.info(f"⚡ Action: {tc['name']} | Input: {tc['args']}")
+
 
 
     return ({'messages':result}) 

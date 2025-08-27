@@ -37,6 +37,12 @@ def save_thread_title(thread_id: str, title: str):
             ON CONFLICT(thread_id) DO UPDATE SET topic=excluded.topic
         """, (thread_id, title))
 
+from langgraph.types import Command
+
+
+
+
+
 
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]

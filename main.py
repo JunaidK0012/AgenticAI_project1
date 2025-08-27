@@ -15,7 +15,7 @@ def generate_conversation_title(user_message: str) -> str:
     prompt = ChatPromptTemplate([
         ('system','You are a helpful assistant that generates short chat titles (max 5 words).'),
         ('user',"Create a short title for this conversation:\n\n{messages}")
-    ])
+    ]) 
 
     chain = prompt | llm
 
@@ -23,9 +23,6 @@ def generate_conversation_title(user_message: str) -> str:
 
     return response.content.strip()
 
-def ai_response(user_input,config):
-    chunk = graph.stream({'messages': [HumanMessage(content = user_input)]},config,stream_mode='messages')
-    return chunk['messages'][-1].content
     
 
 

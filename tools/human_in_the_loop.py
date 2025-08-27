@@ -31,6 +31,8 @@ def add_human_in_the_loop(toolhitl,interrupt_config: HumanInterruptConfig = None
 
         # approve the tool call
         if response["type"] == "accept":
+            print(f"✅ Invoking tool {toolhitl.name} with args: {tool_input}")
+
             tool_response = toolhitl.invoke(tool_input, config)
         # update tool call args
         elif response["type"] == "edit":
