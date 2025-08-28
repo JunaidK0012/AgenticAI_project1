@@ -75,9 +75,22 @@ st.sidebar.header("My Conversations")
 
 
 for thread in st.session_state['chat_threads']:
+    
     if st.sidebar.button(thread["topic"],key=thread['thread_id']):
+
+        # Auto-remove empty chats when switching
+        if (len(st.session_state.get("message_history", [])) == 0 and 
+            any(t["thread_id"] == st.session_state["thread_id"] for t in st.session_state["chat_threads"])):
+            st.session_state["chat_threads"] = [
+                t for t in st.session_state["chat_threads"]
+                if t["thread_id"] != st.session_state["thread_id"]
+            ]
+            
         st.session_state['thread_id'] = thread["thread_id"]
-        messages = load_conversation(thread["thread_id"])
+        try:
+            messages = load_conversation(thread["thread_id"])
+        except Exception as e:
+            st.error("❌ Could not load this conversation. Please refresh.")
 
         temp_message = []
 
@@ -101,11 +114,12 @@ for thread in st.session_state['chat_threads']:
 #------------------------------------------------------------------------
 #loading the conversation history
 for message in st.session_state['message_history']:
-    with st.chat_message(message['role']):
+    with st.chat_message(message['role'], avatar="🧑" if message['role']=="user" else "🤖"):
         st.markdown(message['content'])
 
 #_________________________________________________________________________
 def ai_only_stream(user_input: str):
+    
 
     for event in graph.stream(
         {"messages": [HumanMessage(content=user_input)]},
@@ -143,8 +157,8 @@ def ai_only_stream(user_input: str):
                 if isinstance(message, AIMessage):
                     yield message.content
                 elif isinstance(message, list) and message and isinstance(message[0], ToolMessage):
-                    for tool_msg in message:
-                        with st.status("Tools"):
+                    with st.status("Tools"):
+                        for tool_msg in message:
                             st.info(f"🔧 **Using tool:** `{tool_msg.name}`")
                 else:
                     pass
