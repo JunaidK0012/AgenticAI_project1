@@ -174,14 +174,16 @@ if "resume_action" in st.session_state:
     with st.chat_message("assistant"):
         # stream assistant response after decision
         for event in graph.stream(Command(resume=[decision]), config=CONFIG, stream_mode="updates"):
-            print(event)
+           
             for node, data in event.items():
                 messages = data.get("messages", [])
-                for msg in messages:
-                    if isinstance(msg, AIMessage):
-                        st.write(msg.content)   # shows assistant text
-                    elif isinstance(msg, ToolMessage):
-                        st.success(f"✅ Tool executed: {msg.name}")
+                if isinstance(messages, AIMessage):
+                    
+                    st.write(messages.content)   # shows assistant text
+                elif isinstance(message, list) and message and isinstance(message[0], ToolMessage):
+                    with st.status("Tools"):
+                        for tool_msg in message:
+                            st.info(f"🔧 **Using tool:** `{tool_msg.name}`")
 if user_input: 
 
     st.session_state['message_history'].append({'role':'user','content':user_input})
