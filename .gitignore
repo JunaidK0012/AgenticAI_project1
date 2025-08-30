@@ -212,3 +212,4 @@ chatbot.db
 chatbot.db-shm
 chatbot.db-wal
 calendar.db
+tickets.db

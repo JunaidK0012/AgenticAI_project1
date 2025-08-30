@@ -174,6 +174,7 @@ if "resume_action" in st.session_state:
     with st.chat_message("assistant"):
         # stream assistant response after decision
         for event in graph.stream(Command(resume=[decision]), config=CONFIG, stream_mode="updates"):
+            print(event)
             for node, data in event.items():
                 messages = data.get("messages", [])
                 for msg in messages:

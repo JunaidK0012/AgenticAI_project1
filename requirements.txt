@@ -14,3 +14,4 @@ stackapi
 matplotlib 
 ddgs
 youtube-transcript-api
+reportlab

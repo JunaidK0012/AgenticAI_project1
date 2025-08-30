@@ -4,8 +4,12 @@ from .human_in_the_loop import add_human_in_the_loop
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
 from .youtube_tool import youtube_transcript_tool
+from .pdf_tool import generate_pdf
+from .news_tool import news_search
 from langchain_core.tools import Tool,tool
+import requests
 from langchain_experimental.utilities import PythonREPL
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.tools import YouTubeSearchTool,WikipediaQueryRun
 
@@ -94,13 +98,44 @@ Notes for LLM:
 - Prefer this tool for reliable real-time answers.
 """
 
+@tool
+def read_webpage(url: str) -> str:
+    """
+    Read and extract the main text content from a given webpage URL.
+
+    Input:
+    - url (str): The webpage link to read.
+
+    Output:
+    - The extracted textual content of the webpage (plain text)
+
+    """
+    try:
+        loader = WebBaseLoader(url)
+        docs = loader.load()
+        return docs[0].page_content[:4000]
+    except Exception as e:
+        return f"Error reading webpage: {str(e)}"
+
+
+
+
+from pydantic import BaseModel
+
 python_repl = PythonREPL()
-# You can create the tool to pass to an agent
+
+class PythonREPLInput(BaseModel):
+    code: str
+
 repl_tool = Tool(
     name="python_repl",
-    description="A Python shell. Use this to execute python commands. Input should be a valid python command. If you want to see the output of a value, you should print it out with `print(...)`.",
-    func=python_repl.run,
+    description="A Python shell. Input should be Python code as a string.",
+    args_schema=PythonREPLInput,
+    func=lambda code: python_repl.run(code)  # map `code` -> REPL
 )
+
+
+
 
 #wikipedia
 wikipedia_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(load_all_available_meta=True))
@@ -133,6 +168,114 @@ Notes for LLM:
 - Use this when the user asks for a video on a topic or requests to "find on YouTube".
 - To summarize or analyze a specific video, first search with this tool, then pass the URL to youtube_transcript_tool.
 """
+@tool
+def shopping_search(query: str) -> str:
+    """
+    Search for shopping/product links online.
+
+    Input:
+    - query (str): Product name or description.
+
+    Output:
+    - List of shopping/product links.
+    """
+    try:
+        ddg_url = f"https://duckduckgo.com/html/?q={query}+buy"
+        response = requests.get(ddg_url, headers={"User-Agent": "Mozilla/5.0"})
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        results = [a["href"] for a in soup.select(".result__a")[:5]]
+        return "\n".join(results) if results else "No shopping results found."
+    except Exception as e:
+        return f"Error in shopping search: {str(e)}"
+
+import sqlite3
+from langchain_core.tools import tool
+
+# --- Setup DB ---
+ticket_conn = sqlite3.connect("tickets.db", check_same_thread=False)
+ticket_conn.execute("""
+CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    status TEXT
+)
+""")
+
+# --- Create Ticket ---
+@tool
+def create_ticket(title: str, description: str) -> str:
+    """
+    Create a new support ticket.
+
+    Input:
+    - title (str): Short title of the issue
+    - description (str): Detailed description of the issue
+
+    Output:
+    - Confirmation message with ticket ID
+    """
+    with ticket_conn:
+        cur = ticket_conn.execute(
+            "INSERT INTO tickets (title, description, status) VALUES (?, ?, ?)",
+            (title, description, "open")
+        )
+        ticket_id = cur.lastrowid
+    return f"✅ Ticket #{ticket_id} created: {title} (status: open)"
+
+# --- List Tickets ---
+@tool
+def list_tickets() -> str:
+    """
+    List all tickets with their status.
+    """
+    cur = ticket_conn.execute("SELECT id, title, status FROM tickets ORDER BY id DESC")
+    rows = cur.fetchall()
+    if not rows:
+        return "📭 No tickets found."
+    return "\n".join([f"#{row[0]}: {row[1]} [{row[2]}]" for row in rows])
+
+# --- Get Ticket Details ---
+@tool
+def get_ticket_details(ticket_id: int) -> str:
+    """
+    Retrieve full details of a specific ticket.
+
+    Input:
+    - ticket_id (int): ID of the ticket
+
+    Output:
+    - Title, description, and status of the ticket
+    """
+    cur = ticket_conn.execute(
+        "SELECT title, description, status FROM tickets WHERE id = ?",
+        (ticket_id,)
+    )
+    row = cur.fetchone()
+    if not row:
+        return f"❌ Ticket #{ticket_id} not found."
+    return f"📌 Ticket #{ticket_id}\nTitle: {row[0]}\nDescription: {row[1]}\nStatus: {row[2]}"
+
+# --- Update Ticket ---
+@tool
+def update_ticket(ticket_id: int, status: str) -> str:
+    """
+    Update the status of a ticket.
+
+    Input:
+    - ticket_id (int): ID of the ticket
+    - status (str): New status (e.g., open, in-progress, closed)
+
+    Output:
+    - Confirmation message
+    """
+    with ticket_conn:
+        cur = ticket_conn.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
+        if cur.rowcount == 0:
+            return f"❌ Ticket #{ticket_id} not found."
+    return f"✅ Ticket #{ticket_id} updated to status: {status}"
 
 
 #final tool list 
@@ -146,8 +289,16 @@ tools = [
     wikipedia_tool,
     youtube_search_tool,
     youtube_transcript_tool,
-    repl_tool,
+    add_human_in_the_loop(repl_tool),
     add_event,
-    list_events
-    
+    list_events,
+    read_webpage,
+    generate_pdf,
+    shopping_search,
+    create_ticket,
+    list_tickets,
+    get_ticket_details,  # 👈 new tool
+    update_ticket,
+    news_search,
+
 ]
