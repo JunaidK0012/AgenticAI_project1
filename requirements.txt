@@ -9,3 +9,8 @@ arxiv
 wikipedia
 youtube_search
 langgraph-checkpoint-sqlite
+langchain_experimental
+stackapi
+matplotlib 
+ddgs
+youtube-transcript-api

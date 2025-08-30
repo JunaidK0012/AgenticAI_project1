@@ -114,7 +114,7 @@ for thread in st.session_state['chat_threads']:
 #------------------------------------------------------------------------
 #loading the conversation history
 for message in st.session_state['message_history']:
-    with st.chat_message(message['role'], avatar="🧑" if message['role']=="user" else "🤖"):
+    with st.chat_message(message['role']):
         st.markdown(message['content'])
 
 #_________________________________________________________________________

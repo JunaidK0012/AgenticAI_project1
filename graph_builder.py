@@ -47,7 +47,6 @@ from langgraph.types import Command
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
-
 def build_graph():
     graph = StateGraph(State)
     tool_node = ToolNode(tools)
