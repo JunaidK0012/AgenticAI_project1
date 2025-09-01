@@ -1,5 +1,5 @@
 from langchain_core.messages import HumanMessage
-from graph_builder import build_graph
+from src.graph.graph_builder import build_graph
 from config import llm
 
 from langgraph.types import Command
@@ -11,17 +11,7 @@ graph = build_graph()
 #config = {"configurable": {"thread_id":"40"}}
 
 
-def generate_conversation_title(user_message: str) -> str:
-    prompt = ChatPromptTemplate([
-        ('system','You are a helpful assistant that generates short chat titles (max 5 words).'),
-        ('user',"Create a short title for this conversation:\n\n{messages}")
-    ]) 
 
-    chain = prompt | llm
-
-    response = chain.invoke({'messages':user_message})
-
-    return response.content.strip()
 
     
 

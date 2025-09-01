@@ -1,10 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from tools import tools
-from config import llm
-from logger import logger
-from datetime import datetime
-CURRENT_TIME_IST = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
-llm_with_tools = llm.bind_tools(tools)
+from src.config.settings import CURRENT_TIME_IST
 
 system_prompt = f"""
 You are an intelligent reasoning agent that helps users by combining natural conversation 
@@ -38,19 +32,3 @@ Repeat this loop until you can confidently respond to the user.
 - If user input is ambiguous, ask clarifying questions before acting.
 - Never hallucinate tool outputs. If unsure, say so.
 """
-
-
-def planner_node(state):
-
-    planner_prompt = ChatPromptTemplate([
-        ('system',system_prompt),
-        MessagesPlaceholder(variable_name='messages')
-    ])
-
-    planner = planner_prompt | llm_with_tools
-    result = planner.invoke({'messages': state['messages']})
-
-
-
-    return ({'messages':result}) 
-    
