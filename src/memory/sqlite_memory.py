@@ -1,7 +1,7 @@
-from .db_connection import get_connection
+from .db_connection import get_chatbot_connection
 
 def init_db():
-    conn = get_connection()
+    conn = get_chatbot_connection()
     with conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS threads(
@@ -14,13 +14,13 @@ def init_db():
 
 
 def retrieve_all_threads():
-    conn = get_connection()
+    conn = get_chatbot_connection()
     rows = conn.execute("SELECT thread_id, topic FROM threads").fetchall()
     return[{"thread_id":row[0], "topic":row[1] or "New Conversation"} for row in rows]
 
 
 def save_thread_title(thread_id: str, title: str):
-    conn = get_connection()
+    conn = get_chatbot_connection()
     with conn:
         conn.execute("""
             INSERT INTO threads (thread_id, topic)

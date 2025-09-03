@@ -40,8 +40,7 @@ def youtube_transcript_tool(video_url: str) -> str:
         output = ""
         for t in transcript:
             output += t['text']
-            
-        return output
+        
 
 
     except Exception as e:

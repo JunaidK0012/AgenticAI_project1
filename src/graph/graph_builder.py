@@ -16,6 +16,9 @@ class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 def build_graph():
+
+    """Define and return the chatbot LangGraph."""
+
     graph = StateGraph(State)
     tool_node = ToolNode(tools)
     graph.add_node('planner_node',planner_node)
@@ -24,4 +27,5 @@ def build_graph():
     graph.add_edge(START,'planner_node')
     graph.add_conditional_edges('planner_node',tools_condition)
     graph.add_edge('tools','planner_node')
+    
     return graph.compile(checkpointer=checkpointer)

@@ -1,27 +1,26 @@
 from .arxiv_tool import arxiv_search
 from .file_tools import read_tool,write_tool,list_tool
 from .human_in_the_loop import add_human_in_the_loop
+from langchain_core.tools import tool
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
+from langchain_community.tools import DuckDuckGoSearchRun
 from .youtube_tool import youtube_transcript_tool
 from .pdf_tool import generate_pdf
+from .ticket_tool import create_ticket,update_ticket,list_tickets,get_ticket_details
 from .news_tool import news_search
+from .shopping_search import shopping_search
 from langchain_core.tools import Tool,tool
-import requests
+from pydantic import BaseModel
 from langchain_experimental.utilities import PythonREPL
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.tools import YouTubeSearchTool,WikipediaQueryRun
+from src.memory.db_connection import get_calendar_connection,get_tickets_connection
 
 load_dotenv()
 
-
-
-import sqlite3
-from datetime import datetime
-from langchain_core.tools import tool
-
-cal_conn = sqlite3.connect("calendar.db", check_same_thread=False)
+cal_conn = get_calendar_connection()
 cal_conn.execute("CREATE TABLE IF NOT EXISTS events (title TEXT, date TEXT)")
 
 @tool
@@ -63,8 +62,7 @@ def list_events() -> str:
     return "\n".join([f"{row[0]} on {row[1]}" for row in cur.fetchall()])
 
 
-from langchain_community.tools import DuckDuckGoSearchRun
-
+#web search(ddgs)
 duck_search = DuckDuckGoSearchRun()
 duck_search.description = """
 Perform a DuckDuckGo web search.
@@ -82,7 +80,7 @@ Notes for LLM:
 
 
 
-#web search
+#web search(tavily)
 tavily_search = TavilySearch()
 tavily_search.description = """
 Perform a Tavily web search.
@@ -118,10 +116,7 @@ def read_webpage(url: str) -> str:
         return f"Error reading webpage: {str(e)}"
 
 
-
-
-from pydantic import BaseModel
-
+#Python shell
 python_repl = PythonREPL()
 
 class PythonREPLInput(BaseModel):
@@ -133,8 +128,6 @@ repl_tool = Tool(
     args_schema=PythonREPLInput,
     func=lambda code: python_repl.run(code)  # map `code` -> REPL
 )
-
-
 
 
 #wikipedia
@@ -153,6 +146,7 @@ Notes for LLM:
 - Do not hallucinate content; rely on the returned Wikipedia summary.
 """
 
+
 #Youtube
 youtube_search_tool = YouTubeSearchTool()
 youtube_search_tool.description = """
@@ -168,137 +162,31 @@ Notes for LLM:
 - Use this when the user asks for a video on a topic or requests to "find on YouTube".
 - To summarize or analyze a specific video, first search with this tool, then pass the URL to youtube_transcript_tool.
 """
-@tool
-def shopping_search(query: str) -> str:
-    """
-    Search for shopping/product links online.
 
-    Input:
-    - query (str): Product name or description.
 
-    Output:
-    - List of shopping/product links.
-    """
-    try:
-        ddg_url = f"https://duckduckgo.com/html/?q={query}+buy"
-        response = requests.get(ddg_url, headers={"User-Agent": "Mozilla/5.0"})
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        results = [a["href"] for a in soup.select(".result__a")[:5]]
-        return "\n".join(results) if results else "No shopping results found."
-    except Exception as e:
-        return f"Error in shopping search: {str(e)}"
-
-import sqlite3
-from langchain_core.tools import tool
-
-# --- Setup DB ---
-ticket_conn = sqlite3.connect("tickets.db", check_same_thread=False)
-ticket_conn.execute("""
-CREATE TABLE IF NOT EXISTS tickets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT,
-    description TEXT,
-    status TEXT
-)
-""")
-
-# --- Create Ticket ---
-@tool
-def create_ticket(title: str, description: str) -> str:
-    """
-    Create a new support ticket.
-
-    Input:
-    - title (str): Short title of the issue
-    - description (str): Detailed description of the issue
-
-    Output:
-    - Confirmation message with ticket ID
-    """
-    with ticket_conn:
-        cur = ticket_conn.execute(
-            "INSERT INTO tickets (title, description, status) VALUES (?, ?, ?)",
-            (title, description, "open")
-        )
-        ticket_id = cur.lastrowid
-    return f"✅ Ticket #{ticket_id} created: {title} (status: open)"
-
-# --- List Tickets ---
-@tool
-def list_tickets() -> str:
-    """
-    List all tickets with their status.
-    """
-    cur = ticket_conn.execute("SELECT id, title, status FROM tickets ORDER BY id DESC")
-    rows = cur.fetchall()
-    if not rows:
-        return "📭 No tickets found."
-    return "\n".join([f"#{row[0]}: {row[1]} [{row[2]}]" for row in rows])
-
-# --- Get Ticket Details ---
-@tool
-def get_ticket_details(ticket_id: int) -> str:
-    """
-    Retrieve full details of a specific ticket.
-
-    Input:
-    - ticket_id (int): ID of the ticket
-
-    Output:
-    - Title, description, and status of the ticket
-    """
-    cur = ticket_conn.execute(
-        "SELECT title, description, status FROM tickets WHERE id = ?",
-        (ticket_id,)
-    )
-    row = cur.fetchone()
-    if not row:
-        return f"❌ Ticket #{ticket_id} not found."
-    return f"📌 Ticket #{ticket_id}\nTitle: {row[0]}\nDescription: {row[1]}\nStatus: {row[2]}"
-
-# --- Update Ticket ---
-@tool
-def update_ticket(ticket_id: int, status: str) -> str:
-    """
-    Update the status of a ticket.
-
-    Input:
-    - ticket_id (int): ID of the ticket
-    - status (str): New status (e.g., open, in-progress, closed)
-
-    Output:
-    - Confirmation message
-    """
-    with ticket_conn:
-        cur = ticket_conn.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
-        if cur.rowcount == 0:
-            return f"❌ Ticket #{ticket_id} not found."
-    return f"✅ Ticket #{ticket_id} updated to status: {status}"
 
 
 #final tool list 
 tools = [
     arxiv_search,
     read_tool,
-    add_human_in_the_loop(write_tool),
+    write_tool,
     list_tool,
     duck_search,
     tavily_search,
     wikipedia_tool,
     youtube_search_tool,
     youtube_transcript_tool,
-    add_human_in_the_loop(repl_tool),
+    repl_tool,
     add_event,
     list_events,
     read_webpage,
     generate_pdf,
     shopping_search,
-    create_ticket,
+    add_human_in_the_loop(create_ticket),
     list_tickets,
-    get_ticket_details,  # 👈 new tool
-    update_ticket,
+    get_ticket_details,  
+    add_human_in_the_loop(update_ticket),
     news_search,
 
 ]

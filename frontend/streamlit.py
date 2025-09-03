@@ -17,6 +17,7 @@ CONFIG = get_config(st.session_state['thread_id'])
 
 #------------------------- Sidebar UI ---------------------------------- 
 
+
 st.sidebar.header('Langgraph Chatbot')
 
 if st.sidebar.button('New Chat'):
@@ -38,7 +39,7 @@ for thread in st.session_state['chat_threads']:
             
         st.session_state['thread_id'] = thread["thread_id"]
         try:
-            messages = load_conversation(thread["thread_id"])
+            messages = load_conversation(graph,thread["thread_id"])
         except Exception as e:
             st.error("❌ Could not load this conversation. Please refresh.")
 

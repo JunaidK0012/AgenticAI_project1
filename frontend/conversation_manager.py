@@ -1,7 +1,7 @@
 import streamlit as st 
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-
+from langsmith import traceable
 
 def assistant_stream_response(graph ,user_input: str,config: dict):
     
@@ -47,6 +47,7 @@ def assistant_stream_response(graph ,user_input: str,config: dict):
                 else:
                     pass
 
+@traceable(name = "hitl_handler")
 def handle_interrupted_action(graph, config: dict):
     # after event loop, check if resume_action exists
     if "resume_action" in st.session_state:
