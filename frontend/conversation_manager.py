@@ -1,51 +1,51 @@
 import streamlit as st 
 from langgraph.types import Command
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import AIMessageChunk,ToolMessageChunk, HumanMessage, AIMessage, ToolMessage
 from langsmith import traceable
 
 def assistant_stream_response(graph ,user_input: str,config: dict):
     
-    for event in graph.stream(
+    for stream_mode, chunk in graph.stream(
         {"messages": [HumanMessage(content=user_input)]},
         config=config,
-        stream_mode="updates",
+        stream_mode=["updates", "messages"],
     ):
-        if "__interrupt__" in event:
-           
-            action = event['__interrupt__'][0].value[0]['action_request']['action']
-            args = event['__interrupt__'][0].value[0]['action_request']['args']
         
-            st.markdown(f"Assistant wants to use the tool `{action}` ")
-            st.json(args)
+        if stream_mode == "messages":
+            message, metadata = chunk 
+            if isinstance(message, AIMessageChunk):
+                print("AIMessage")
+                yield message.content
+            elif isinstance(message, ToolMessage):
+                with st.status("Tools"):
+                    st.info(f"🔧 **Using tool:** `{message.name}`")
 
-            col1, col3 = st.columns(2)
+        elif stream_mode == "updates":
+            if "__interrupt__" in chunk:
+           
+                action = chunk['__interrupt__'][0].value[0]['action_request']['action']
+                args = chunk['__interrupt__'][0].value[0]['action_request']['args']
+            
+                st.markdown(f"Assistant wants to use the tool `{action}` ")
+                st.json(args)
 
-            # define callback
-            def accept_action():
-                st.session_state["resume_action"] = {"type": "accept"}
+                col1, col3 = st.columns(2)
 
-            def deny_action():
-                st.session_state["resume_action"] = {"type": "reject"}
+                # define callback
+                def accept_action():
+                    st.session_state["resume_action"] = {"type": "accept"}
 
-            if col1.button("✅ Allow", on_click = accept_action):
-                pass  # button itself triggers callback
+                def deny_action():
+                    st.session_state["resume_action"] = {"type": "reject"}
 
-            elif col3.button("❌ Deny",on_click = deny_action):
-                pass
+                if col1.button("✅ Allow", on_click = accept_action):
+                    pass  # button itself triggers callback
 
-
-        # Tool event: show in chat UI
-        elif "__interrupt__" not in event:
-            for node,data in event.items():
-                message = data.get('messages',[])
-                if isinstance(message, AIMessage):
-                    yield message.content
-                elif isinstance(message, list) and message and isinstance(message[0], ToolMessage):
-                    with st.status("Tools"):
-                        for tool_msg in message:
-                            st.info(f"🔧 **Using tool:** `{tool_msg.name}`")
-                else:
+                elif col3.button("❌ Deny",on_click = deny_action):
                     pass
+
+
+
 
 @traceable(name = "hitl_handler")
 def handle_interrupted_action(graph, config: dict):
