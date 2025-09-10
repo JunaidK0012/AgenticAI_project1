@@ -77,7 +77,7 @@ if user_input:
     
   # Assistant streaming block
     with st.chat_message("assistant"):
-        
+
         
         ai_message = st.write_stream(assistant_stream_response(graph,user_input,CONFIG))
         # Save assistant message 

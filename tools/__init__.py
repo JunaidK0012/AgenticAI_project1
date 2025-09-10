@@ -170,7 +170,7 @@ Notes for LLM:
 tools = [
     arxiv_search,
     read_tool,
-    write_tool,
+    add_human_in_the_loop(write_tool),
     list_tool,
     duck_search,
     tavily_search,
