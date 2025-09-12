@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from src.graph.graph_builder import build_graph
 from langchain_core.messages import HumanMessage,AIMessage,ToolMessage
 from src.memory.sqlite_memory import retrieve_all_threads
-
+from src.config.settings import user_id
 def init_session_state():
     if 'message_history' not in st.session_state:
         st.session_state['message_history'] = []
@@ -18,8 +18,8 @@ def init_session_state():
     if "chat_threads" not in st.session_state:
         st.session_state["chat_threads"] = retrieve_all_threads()
 
-def get_config(thread_id: str):
-    return {'configurable': {'thread_id': thread_id}}
+def get_config(thread_id: str,user_id: str):
+    return {'configurable': {'thread_id': thread_id,'user_id':user_id}}
 
 
 def generate_conversation_title(user_message: str) -> str:
@@ -74,5 +74,7 @@ def convert_state_messages(state_messages):
         if isinstance(m, HumanMessage):
             out.append({"role": "user", "content": m.content})
         elif isinstance(m, AIMessage):
-            out.append({"role": "assistant", "content": m.content})
+            if m.content and str(m.content).strip():
+                out.append({"role": "assistant", "content": m.content})
+
     return out

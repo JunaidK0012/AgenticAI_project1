@@ -7,13 +7,13 @@ from main import graph
 from src.memory.sqlite_memory import retrieve_all_threads,save_thread_title
 from src.utils.helper import init_session_state,get_config,generate_conversation_title,reset_chat,convert_state_messages,add_thread,generate_thread_id,load_conversation
 from frontend.conversation_manager import assistant_stream_response,handle_interrupted_action
-
+from src.config.settings import user_id
 # ----------------------- Session State ---------------------------
 init_session_state()
 
 add_thread(st.session_state['thread_id'],topic="New Conversation")
 
-CONFIG = get_config(st.session_state['thread_id'])
+CONFIG = get_config(st.session_state['thread_id'],user_id)
 
 #------------------------- Sidebar UI ---------------------------------- 
 

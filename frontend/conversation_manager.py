@@ -57,8 +57,9 @@ def show_interrupt_popup(action, args):
     @st.dialog("⚠️ Human Review Required")
     def popup():
         st.markdown(f"Assistant wants to use the tool: **{action}**")
-        st.json(args)
-
+        with st.expander("🔍 Tool arguments"):
+            st.json(args)
+                                                                                                                                                              
         col1, col2 = st.columns(2)
 
         # define callback

@@ -164,10 +164,38 @@ Notes for LLM:
 """
 
 
+from langchain_core.runnables import RunnableConfig
+from langgraph.config import get_store
+
+@tool
+def get_user_info(config: RunnableConfig) -> str:
+    """Look up user info."""
+    store = get_store()
+    user_id = config['configurable'].get("user_id")
+    user_info = store.get(("users",),user_id)
+    return str(user_info.value)
+
+
+from typing import Dict, Any
+    
+
+@tool 
+def save_user_info(user_info: Dict[str, Any], config: RunnableConfig) -> str:
+    """
+    Save arbitrary user info as key-value pairs.
+    Always pass `user_info` as a JSON object (not a string).
+    Example: {"name": "John", "age": 30}
+    """
+    store = get_store()
+    user_id = config['configurable'].get("user_id")
+    store.put(("users",), user_id, user_info)
+    return "Successfully saved user info "
 
 
 #final tool list 
 tools = [
+    save_user_info,
+    get_user_info,
     arxiv_search,
     read_tool,
     add_human_in_the_loop(write_tool),

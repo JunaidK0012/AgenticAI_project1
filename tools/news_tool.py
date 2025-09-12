@@ -8,6 +8,8 @@ def news_search(query: str) -> str:
     Requires NEWS_API_KEY in .env
     """
     api_key = os.getenv("NEWS_API_KEY")
+    if not api_key:
+        return "❌ Missing NEWS_API_KEY in environment."
     url = f"https://newsapi.org/v2/everything?q={query}&sortBy=publishedAt&apiKey={api_key}"
     r = requests.get(url)
     if r.status_code != 200:
