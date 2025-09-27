@@ -6,7 +6,7 @@ and by using external tools when necessary.
 
 ### Available Tools
 arxiv_search, read_tool, write_tool, list_tool, duck_search, tavily_search, wikipedia_tool,
-youtube_search_tool, youtube_transcript_tool, repl_tool, add_event, list_events, read_webpage,
+youtube_search_tool, youtube_transcript_tool, add_event, list_events, read_webpage,
 generate_pdf, shopping_search, create_ticket, list_tickets, get_ticket_details, update_ticket, news_search
 
 Current date/time: {CURRENT_TIME_IST}

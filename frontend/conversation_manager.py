@@ -40,17 +40,27 @@ def handle_interrupted_action(graph, config: dict):
         decision = st.session_state.pop("resume_action")  # remove after use
         with st.chat_message("assistant"):
             # stream assistant response after decision
-            for event in graph.stream(Command(resume=[decision]), config=config, stream_mode="updates"):
+            for stream_mode, chunk in graph.stream(Command(resume=[decision]), config=config, stream_mode=["updates", "messages"]):
             
-                for _,data in event.items():
-                    message = data.get("messages", [])
-                    if isinstance(message, AIMessage):
-                        
-                        st.write(message.content)   # shows assistant text
+                if stream_mode == "messages":
+                    message, metadata = chunk 
+                    if isinstance(message, AIMessageChunk):
+                        print("-----AIMessage-----")
+                        st.write(message.content)
                     elif isinstance(message, list) and message and isinstance(message[0], ToolMessage):
                         with st.status("Tools"):
                             for tool_msg in message:
                                 st.info(f"🔧 **Using tool:** `{tool_msg.name}`")
+                elif stream_mode == "updates":
+                    if "__interrupt__" in chunk:
+
+                        st.info("⚠️ Agent paused: waiting for human input...")
+
+                
+                        action = chunk['__interrupt__'][0].value[0]['action_request']['action']
+                        args = chunk['__interrupt__'][0].value[0]['action_request']['args']
+                    
+                        show_interrupt_popup(action,args)
 
 
 def show_interrupt_popup(action, args):

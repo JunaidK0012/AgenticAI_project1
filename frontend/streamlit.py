@@ -52,10 +52,9 @@ for message in st.session_state['message_history']:
         st.markdown(message['content'])
 
 # ----------------------- Main Loop ------------------------------------
-
+handle_interrupted_action(graph,CONFIG)
 user_input = st.chat_input("Type Here")
 
-handle_interrupted_action(graph,CONFIG)
 
 if user_input: 
 

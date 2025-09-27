@@ -205,7 +205,7 @@ tools = [
     wikipedia_tool,
     youtube_search_tool,
     youtube_transcript_tool,
-    repl_tool,
+
     add_event,
     list_events,
     read_webpage,

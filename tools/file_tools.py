@@ -1,7 +1,7 @@
 # File management tool
 from langchain_community.agent_toolkits import FileManagementToolkit
 
-working_directory = './files'
+working_directory = './'
 
 file_management_tools =FileManagementToolkit(
     root_dir=str(working_directory),
