@@ -3,13 +3,17 @@ import requests
 @tool
 def shopping_search(query: str) -> str:
     """
-    Search for shopping/product links online.
+    Search products online.
 
     Input:
-    - query (str): Product name or description.
+    - A query string (str), e.g. "buy iPhone 15".
 
     Output:
-    - List of shopping/product links.
+    - Product search results with details and links.
+
+    When to use:
+    - When user asks to "find", "compare", or "buy" a product online.
+
     """
     try:
         ddg_url = f"https://duckduckgo.com/html/?q={query}+buy"

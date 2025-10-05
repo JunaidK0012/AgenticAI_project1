@@ -17,3 +17,8 @@ youtube-transcript-api
 reportlab
 langmem
 fastapi
+langchain-google-community
+google-auth
+google-auth-oauthlib
+google-auth-httplib2 
+google-api-python-client

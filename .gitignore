@@ -215,3 +215,5 @@ calendar.db
 tickets.db
 
 data/
+.vscode/
+

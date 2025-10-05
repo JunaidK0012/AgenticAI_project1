@@ -2,7 +2,9 @@ from langchain_core.tools import BaseTool,tool
 from langgraph.prebuilt.interrupt import HumanInterruptConfig,HumanInterrupt
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt
+import logging
 
+logger = logging.getLogger(__name__)
 def add_human_in_the_loop(toolhitl,interrupt_config: HumanInterruptConfig = None) -> BaseTool:
     """Wrap a tool to support human-in-the-loop review."""
 
@@ -26,12 +28,12 @@ def add_human_in_the_loop(toolhitl,interrupt_config: HumanInterruptConfig = None
             "config":interrupt_config,
             "description": "Please review the tool call"
         }
-
+        logger.info("Interrupt triggered")
         response = interrupt([request])[0]
-
+        
         # approve the tool call
         if response["type"] == "accept":
-            print(f"✅ Invoking tool {toolhitl.name} with args: {tool_input}")
+            logger.info("✅ Invoking tool %s with args: %s", toolhitl.name, tool_input)
 
             tool_response = toolhitl.invoke(tool_input, config)
         # update tool call args
@@ -41,6 +43,7 @@ def add_human_in_the_loop(toolhitl,interrupt_config: HumanInterruptConfig = None
         # respond to the LLM with user feedback
         elif response["type"] == "response":
             user_feedback = response["args"]
+            logger.info("📩 User rejected the tool call")
             tool_response = user_feedback
         else:
             raise ValueError(f"Unsupported interrupt response type: {response['type']}")

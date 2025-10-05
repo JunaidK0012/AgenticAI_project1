@@ -36,8 +36,7 @@ def add_event(title: str, date: str) -> str:
     - Confirmation message with event title and date.
 
     Notes for LLM:
-    - Use when the user wants to schedule, save, or add an event.
-    - Always ensure the date follows YYYY-MM-DD format.
+    - Use When user requests to add/schedule an event or reminder.
     """
     with cal_conn:
         cal_conn.execute("INSERT INTO events VALUES (?, ?)", (title, date))
@@ -124,7 +123,20 @@ class PythonREPLInput(BaseModel):
 
 repl_tool = Tool(
     name="python_repl",
-    description="A Python shell. Input should be Python code as a string.",
+    description="""
+    Execute Python code in a safe Python shell.
+
+    Input:
+    - code (str): Python code as a string. Example: "print(2+2)" or "import math; math.sqrt(16)".
+
+    Output:
+    - The result or output of the executed code.
+
+    Priority Rules:
+    - Use this ONLY when the user explicitly asks to run Python code, perform calculations, test scripts, or manipulate data.
+    - Do NOT use this for general knowledge, search, or text processing; other tools are preferred for those tasks.
+    - Always validate input to ensure it is safe and syntactically correct.
+    """,
     args_schema=PythonREPLInput,
     func=lambda code: python_repl.run(code)  # map `code` -> REPL
 )
@@ -169,7 +181,18 @@ from langgraph.config import get_store
 
 @tool
 def get_user_info(config: RunnableConfig) -> str:
-    """Look up user info."""
+    """
+    Retrieve stored user information.
+
+    Input:
+    - config (RunnableConfig): contains user_id for lookup.
+
+    Output:
+    - A string representation of stored user data.
+
+    When to use:
+    - When you need to recall previously saved user details (name, preferences, etc.).
+    """
     store = get_store()
     user_id = config['configurable'].get("user_id")
     user_info = store.get(("users",),user_id)
@@ -182,9 +205,18 @@ from typing import Dict, Any
 @tool 
 def save_user_info(user_info: Dict[str, Any], config: RunnableConfig) -> str:
     """
-    Save arbitrary user info as key-value pairs.
-    Always pass `user_info` as a JSON object (not a string).
-    Example: {"name": "John", "age": 30}
+    Save structured user information as key-value pairs.
+
+    Input:
+    - user_info (dict): Example {"name": "Alice", "age": 30}.
+    - config (RunnableConfig): contains user_id for storage.
+
+    Output:
+    - Confirmation string.
+
+    When to use:
+    - Use whenever the user shares personal details (name, preferences, etc.) that should be remembered for future interactions.
+
     """
     store = get_store()
     user_id = config['configurable'].get("user_id")
@@ -200,12 +232,10 @@ tools = [
     read_tool,
     add_human_in_the_loop(write_tool),
     list_tool,
-    duck_search,
     tavily_search,
     wikipedia_tool,
     youtube_search_tool,
     youtube_transcript_tool,
-
     add_event,
     list_events,
     read_webpage,
@@ -214,7 +244,7 @@ tools = [
     add_human_in_the_loop(create_ticket),
     list_tickets,
     get_ticket_details,  
-    add_human_in_the_loop(update_ticket),
     news_search,
-
+    add_human_in_the_loop(update_ticket),
+    repl_tool
 ]

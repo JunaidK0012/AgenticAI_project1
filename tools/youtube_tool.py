@@ -41,7 +41,7 @@ def youtube_transcript_tool(video_url: str) -> str:
         for t in transcript:
             output += t['text']
         
-
+        return output
 
     except Exception as e:
         return f"Could not fetch transcript: {e}"

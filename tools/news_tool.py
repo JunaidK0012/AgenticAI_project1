@@ -4,7 +4,17 @@ from langchain_core.tools import Tool,tool
 @tool
 def news_search(query: str) -> str:
     """
-    Search latest news headlines by topic.
+    Search for news articles.
+
+    Input:
+    - A query string (str).
+
+    Output:
+    - Recent news headlines with summaries and links.
+
+    When to use:
+    - When user asks for "latest news", "current headlines", or updates on a topic.
+
     Requires NEWS_API_KEY in .env
     """
     api_key = os.getenv("NEWS_API_KEY")

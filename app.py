@@ -6,14 +6,14 @@ import json
 import asyncio
 from typing import Dict, Any
 
-# import your LangGraph builder (adapted from your existing files)
+# import your LangGraph builder 
 from main import build_graph  # build_graph should return compiled graph
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 app = FastAPI(title="LangGraph Chat Service")
 
-# allow CORS for frontend (adjust in shared/config)
+# allow CORS for frontend 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8501"],  # Streamlit default; change for production

@@ -14,6 +14,9 @@ def generate_pdf(filename: str, text: str) -> str:
 
     Output:
     - Path to the generated PDF file
+
+    When to use:
+    - When user asks to create a report or export text as PDF.
     """
     try:
         c = canvas.Canvas(filename, pagesize=letter)

@@ -6,9 +6,17 @@ from langchain_core.tools import tool
 @tool("arxiv_search")
 def arxiv_search(query: str,max_results: int = 5) -> str:
     """
-    Searches arXiv for papers matching the query.
-    - query: keywords, authors or title
-    - max_results: number of papers to return
+    Search scientific papers from arXiv.
+
+    Input:
+    - A query string (str).
+
+    Output:
+    - List of matching arXiv papers with titles, authors, abstracts, and links.
+
+    When to use:
+    - For academic or technical research queries, especially related to science, AI, or math.
+
     """
     try:
         search = arxiv.Search(
